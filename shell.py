@@ -9,8 +9,6 @@ import atexit
 class Shell:
     """Implement the configurable shell."""
 
-    # pylint: disable=too-few-public-methods
-
     class Color:
         """Define shell colors."""
 
@@ -47,15 +45,6 @@ class Shell:
         ]
         return valid[state] + " " if state < len(valid) else None
 
-    def update_command(self, key, options, function=None):
-        """Update options for a command."""
-        *key, cmd = key.split(" ")
-        path, _, data = self.__get_dict_entry(" ".join(key))
-        path = " ".join(path)
-        if function is None:
-            function, _ = data[cmd]
-        data[cmd] = (function, options)
-
     def __init__(self, name, commands, **options):
         """Initialize the shell for the given commands."""
         self.__name = name
@@ -76,6 +65,13 @@ class Shell:
         self.colors = {
             k[:-6]: v for k, v in options.items() if k.endswith("_color")
         }
+        for remove in ["history_file", "history_length", "prompt"]:
+            if remove in options:
+                del options[remove]
+        for remove in ["%s_color" % c for c in self.colors]:
+            if remove in options:
+                del options[remove]
+        self.__environment = options.copy()
 
     def __iter__(self):
         """Return the shell object as an iterator."""
@@ -100,11 +96,10 @@ class Shell:
             function = ""
             while not callable(function):
                 prompt_color = self.colors.get("prompt") or ""
-                prompt = "%s%s%s" % (
-                    prompt_color,
-                    self.__prompt,
-                    Shell.Color.RESET,
-                )
+                prompt = (
+                    "%s%s%s"
+                    % (prompt_color, self.__prompt, Shell.Color.RESET,)
+                ).format(**self.__environment)
                 command = input(prompt)
                 _, args, (function, *_) = self.__get_dict_entry(command)
             return (function, args or [])
@@ -112,3 +107,20 @@ class Shell:
             raise StopIteration()
         except KeyboardInterrupt:
             raise StopIteration()
+
+    def set_env(self, variable, value):
+        """Set an environment variable."""
+        self.__environment[variable] = value
+
+    def get_env(self, variable):
+        """Retrieve the value of an environment variable."""
+        return self.__environment.get(variable)
+
+    def update_command(self, key, options, function=None):
+        """Update options for a command."""
+        *key, cmd = key.split(" ")
+        path, _, data = self.__get_dict_entry(" ".join(key))
+        path = " ".join(path)
+        if function is None:
+            function, _ = data[cmd]
+        data[cmd] = (function, options)

@@ -32,6 +32,7 @@ def change_dir(shell, *args, **_):
     current_dir = os.getcwd()
     path = os.path.join(current_dir, args[0])
     os.chdir(path)
+    shell.set_env("current_dir", os.getcwd().split("/")[-1])
     shell.update_command("cd", get_current_dir_list())
 
 
@@ -55,7 +56,7 @@ def main():
     commands = {
         "level": {
             "multi": (exec_inner, ["inner", "other"]),
-            "another": (exec_another, ),
+            "another": (exec_another,),
         },
         "ls": (list_dir,),
         "cd": (change_dir, get_current_dir_list()),
@@ -66,8 +67,9 @@ def main():
         "test",
         commands,
         history_file=".test_history",
-        prompt="> ",
-        prompt_color=Shell.Color.RED
+        prompt="{current_dir}> ",
+        prompt_color=Shell.Color.RED,
+        current_dir=os.getcwd().split("/")[-1],
     )
     for cmd, args in shell:
         cmd(shell, *args)
